@@ -1,5 +1,4 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-
 import constants as keys
 from telegram.ext import *
 import responses as R
@@ -14,7 +13,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-GENDER, PHOTO, LOCATION, BIO = range(4)
+GENDER, PHOTO, LOCATION = range(3)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -65,11 +64,17 @@ def location(update: Update, context: CallbackContext) -> int:
     logger.info(
         "Location of %s: %f / %f", user.first_name, user_location.latitude, user_location.longitude
     )
+    name = str(user.first_name)
+    latitude = str(user_location.latitude)
+    longitude = str(user_location.longitude)
     update.message.reply_text(
         'Got it! Maybe I can visit you sometime!'
     )
+    update.message.reply_text(
+       "Thanks " + name + "!!" + "Longitude & Latitude are " + longitude + " " + latitude
+    )
 
-    return BIO
+    return "Thanks!"
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -128,6 +133,7 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    dispatcher.add_handler(conv_handler)
     dispatcher.add_handler(CommandHandler("help", help_command))
 
     dispatcher.add_handler(MessageHandler(Filters.text, handle_message))
@@ -140,6 +146,7 @@ def main():
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
+    print(GENDER, PHOTO, LOCATION)
 
 
 if __name__ == '__main__':
