@@ -74,7 +74,7 @@ def location(update: Update, context: CallbackContext) -> int:
        "Thanks " + name + "!!" + "Longitude & Latitude are " + longitude + " " + latitude
     )
 
-    return "Thanks!"
+    return LOCATION
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
