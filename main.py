@@ -1,3 +1,5 @@
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+
 import constants as keys
 from telegram.ext import *
 import responses as R
@@ -12,9 +14,73 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+GENDER, PHOTO, LOCATION, BIO = range(4)
 
-def start_command(update, context):
-    update.message.reply_text("Hi! I am your trading bot! Type /help to see commands")
+
+def start(update: Update, context: CallbackContext) -> int:
+    """Starts the conversation and asks the user about their gender."""
+    reply_keyboard = [['Boy', 'Girl', 'Other']]
+
+    update.message.reply_text(
+        'Hi! My name is Professor Bot. I will hold a conversation with you. '
+        'Send /cancel to stop talking to me.\n\n'
+        'Are you a boy or a girl?',
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Boy or Girl?'
+        ),
+    )
+
+    return GENDER
+
+
+def gender(update: Update, context: CallbackContext) -> int:
+    """Stores the selected gender and asks for a photo."""
+    user = update.message.from_user
+    logger.info("Gender of %s: %s", user.first_name, update.message.text)
+    update.message.reply_text(
+        'I see! Please send me the photo , ',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return PHOTO
+
+
+def photo(update: Update, context: CallbackContext) -> int:
+    """Stores the photo and asks for a location."""
+    user = update.message.from_user
+    photo_file = update.message.photo[-1].get_file()
+    photo_file.download('photo1.jpg')
+    logger.info("Photo of %s: %s", user.first_name, 'photo1.jpg')
+    update.message.reply_text(
+        'Gorgeous! Now, send me your location please'
+    )
+
+    return LOCATION
+
+
+def location(update: Update, context: CallbackContext) -> int:
+    """Stores the location and asks for some info about the user."""
+    user = update.message.from_user
+    user_location = update.message.location
+    logger.info(
+        "Location of %s: %f / %f", user.first_name, user_location.latitude, user_location.longitude
+    )
+    update.message.reply_text(
+        'Got it! Maybe I can visit you sometime!'
+    )
+
+    return BIO
+
+
+def cancel(update: Update, context: CallbackContext) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+    logger.info("User %s canceled the conversation.", user.first_name)
+    update.message.reply_text(
+        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
 
 
 def help_command(update, context):
@@ -23,14 +89,11 @@ def help_command(update, context):
         **Useful Commands**
          **/start** 
          Starts the Bot 
-         **/trade [ticker][order_id][order_type][amount]**  
-         For executing trades (without quotes) 
-         **/price [symbol]**
-         gives you the current trading price of the symbol  
-         **/orderbook [order_type][ticker][depth]**
-         Gives the orderbook depth
+         ** time **  
+         Fetches the current time
          **/help**
          Shows commands list
+         
         """,
     )
 
@@ -52,8 +115,19 @@ def main():
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("start", start_command))
+    # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            GENDER: [MessageHandler(Filters.regex('^(Boy|Girl|Other)$'), gender)],
+            PHOTO: [MessageHandler(Filters.photo, photo)],
+            LOCATION: [
+                MessageHandler(Filters.location, location),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
     dispatcher.add_handler(CommandHandler("help", help_command))
 
     dispatcher.add_handler(MessageHandler(Filters.text, handle_message))
